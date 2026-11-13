@@ -1,0 +1,31 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>lab04</groupId>
+    <artifactId>RPC_HelloWorld</artifactId>
+    <version>1.0</version>
+    <properties>
+        <maven.compiler.release>21</maven.compiler.release>
+        <!-- Compile using Java 21. -->
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+    <dependencies>
+        <dependency>
+            <groupId>com.sun.xml.ws</groupId>
+            <artifactId>jaxws-rt</artifactId>
+            <!-- SOAP web-service library. -->
+            <version>4.0.3</version>
+        </dependency>
+    </dependencies>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <!-- Runs the server and client. -->
+                <version>3.5.0</version>
+            </plugin>
+        </plugins>
+    </build>
+</project>
