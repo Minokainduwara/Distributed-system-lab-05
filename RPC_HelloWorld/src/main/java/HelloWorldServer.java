@@ -3,7 +3,7 @@ package main.java;
 import jakarta.jws.WebService;
 import jakarta.xml.ws.Endpoint;
 
-@WebService(endpointInterface = "HelloWorldServerInterface", serviceName = "HelloWorldServerService", // Must match the
+@WebService(endpointInterface = "main.java.HelloWorldServerInterface", serviceName = "HelloWorldServerService", // Must match the
                                                                                                       // client's
                                                                                                       // service name.
         portName = "HelloWorldServerPort", // Must match the client's port name.
@@ -17,7 +17,7 @@ public class HelloWorldServer implements HelloWorldServerInterface {
     }
 
     public static void main(String[] args) {
-        address = "http://localhost:8080/HelloWorld"; // Change the port/path here if needed.
+        String address = "http://localhost:8080/HelloWorld"; // Change the port/path here if needed.
         Endpoint.publish(address, new HelloWorldServer()); // Publish the SOAP service.
         System.out.println("SOAP server started.");
         System.out.println("WSDL: " + address + "?wsdl"); // WSDL describes the service.

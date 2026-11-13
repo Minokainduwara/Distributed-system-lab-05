@@ -1,6 +1,6 @@
 # RPC HelloWorld — SOAP Web Service Demo
 
-A simple Java project demonstrating **Remote Procedure Call (RPC)** over **SOAP** using **JAX-WS** (Jakarta XML Web Services). The client invokes a remote `sayHello()` method on a server, and the server returns a greeting — all transported as XML over HTTP via the SOAP protocol.
+A simple Java project demonstrating **Remote Procedure Call (RPC)** over **SOAP** using **JAX-WS** (Jakarta XML Web Services). The client invokes a remote `sayHello()` method on a server, and the server returns `"Hello, World!"` — all transported as XML over HTTP via the SOAP protocol.
 
 ---
 
@@ -39,41 +39,127 @@ The `pom.xml` includes `jaxws-rt 4.0.3` (the JAX-WS runtime) and `exec-maven-plu
 
 ---
 
+## What is WSDL?
+
+**WSDL (Web Services Description Language)** is an XML file that describes what a web service does, where it lives, and how to call it. It acts as a machine-readable contract between the client and the server.
+
+When the server starts, JAX-WS automatically generates the WSDL and makes it available at:
+
+```
+http://localhost:8080/HelloWorld?wsdl
+```
+
+The client reads this WSDL to discover:
+
+- The service name (`HelloWorldServerService`)
+- The port name (`HelloWorldServerPort`)
+- The available operation (`sayHello()`)
+- The network address (endpoint URL)
+
+Using the WSDL, JAX-WS generates a client proxy so you can call `sayHello()` as if it were a local method.
+
+---
+
 ## Project Structure
 
 ```
 lab4/
-├── readme.md                     # This file
+├── readme.md                        # This file
+├── .gitignore                       # Git ignore rules
 └── RPC_HelloWorld/
-    ├── pom.xml                   # Maven build file (Java 21, JAX-WS, exec plugin)
+    ├── pom.xml                      # Maven build file (Java 21, JAX-WS, exec plugin)
     └── src/main/java/main/java/
-        ├── HelloWorldServer.java # @WebService interface with @WebMethod sayHello()
-        ├── HelloWorldServerInterface.java # placeholder class
-        └── HelloWorldClient.java # placeholder class
+        ├── HelloWorldServerInterface.java  # Service Endpoint Interface (SEI)
+        ├── HelloWorldServer.java           # Server implementation + publisher
+        └── HelloWorldClient.java           # Client that invokes the remote method
 ```
 
-### `HelloWorldServer.java`
+### `HelloWorldServerInterface.java` — The Service Contract
 
-Despite the file name, this is the **service endpoint interface (SEI)** — the contract between client and server:
+This is the **Service Endpoint Interface (SEI)** — the contract between client and server. It declares *what* operations are available remotely:
 
 ```java
+package main.java;
+
+import jakarta.jws.WebMethod;
+import jakarta.jws.WebService;
+
 @WebService(
     name = "HelloWorldServer",
     targetNamespace = "http://server/"
 )
-public interface HelloWorldServer {
+public interface HelloWorldServerInterface {
     @WebMethod
-    String sayHello();
+    String sayHello(); // The remote operation that the client can invoke on the server
 }
 ```
 
 - `@WebService` marks the interface as a SOAP web service.
 - `@WebMethod` exposes `sayHello()` as a remotely callable operation.
-- The client calls `sayHello()` and receives a `String` response.
 
-### `HelloWorldServerInterface.java` & `HelloWorldClient.java`
+### `HelloWorldServer.java` — The Implementation & Publisher
 
-Placeholder classes intended for the server implementation (endpoint publisher) and the client stub that invokes the remote method. These are to be filled in as part of the lab exercise.
+This class **implements** the SEI and **publishes** the SOAP endpoint:
+
+```java
+package main.java;
+
+import jakarta.jws.WebService;
+import jakarta.xml.ws.Endpoint;
+
+@WebService(
+    endpointInterface = "main.java.HelloWorldServerInterface",
+    serviceName = "HelloWorldServerService",
+    portName = "HelloWorldServerPort",
+    targetNamespace = "http://server/"
+)
+public class HelloWorldServer implements HelloWorldServerInterface {
+
+    @Override
+    public String sayHello() {
+        return "Hello, World!";
+    }
+
+    public static void main(String[] args) {
+        String address = "http://localhost:8080/HelloWorld";
+        Endpoint.publish(address, new HelloWorldServer());
+        System.out.println("SOAP server started.");
+        System.out.println("WSDL: " + address + "?wsdl");
+    }
+}
+```
+
+- `implements HelloWorldServerInterface` provides the actual business logic.
+- `Endpoint.publish(...)` starts a lightweight SOAP server at `http://localhost:8080/HelloWorld`.
+- The WSDL is automatically available at `http://localhost:8080/HelloWorld?wsdl`.
+
+### `HelloWorldClient.java` — The Client
+
+This class invokes the remote `sayHello()` method via a JAX-WS proxy:
+
+```java
+package main.java;
+
+import jakarta.xml.ws.Service;
+import javax.xml.namespace.QName;
+import java.net.URL;
+
+public class HelloWorldClient {
+    public static void main(String[] args) throws Exception {
+        URL wsdl = new URL("http://localhost:8080/HelloWorld?wsdl");
+        QName serviceName = new QName("http://server/", "HelloWorldServerService");
+        QName portName = new QName("http://server/", "HelloWorldServerPort");
+        Service service = Service.create(wsdl, serviceName);
+        HelloWorldServerInterface client = service.getPort(portName, HelloWorldServerInterface.class);
+        System.out.println(client.sayHello());
+    }
+}
+```
+
+1. Downloads the WSDL from the server.
+2. Creates a client proxy for `HelloWorldServerInterface`.
+3. Calls `sayHello()` as if it were a local method.
+4. Prints the server's response (`"Hello, World!"`).
 
 ---
 
@@ -90,11 +176,11 @@ Client                                          Server
   |                                                |
 ```
 
-1. The client obtains a proxy (stub) for `HelloWorldServer`.
-2. Calling `proxy.sayHello()` triggers JAX-WS to build a SOAP XML request.
-3. The request is sent to the server's HTTP endpoint.
-4. The server's JAX-WS runtime unmarshals the XML, invokes the method, and returns a SOAP response.
-5. The client receives a plain Java `String`.
+1. The client obtains a proxy (stub) for `HelloWorldServerInterface`.
+2. Calling `proxy.sayHello()` triggers JAX-WS to build a SOAP XML request (marshalling).
+3. The request is sent over HTTP to the server's endpoint.
+4. The server's JAX-WS runtime unmarshals the XML and invokes `sayHello()`.
+5. The server returns a SOAP response; the client receives a plain Java `String`.
 
 ---
 
@@ -107,18 +193,69 @@ Client                                          Server
 
 ## Build & Run
 
+### Step 1: Compile
+
 From the project root:
 
 ```bash
-# Compile the project
 cd RPC_HelloWorld
 mvn compile
-
-# Run (once HelloWorldServer and HelloWorldClient are implemented)
-mvn exec:java
 ```
 
-The `exec-maven-plugin` is configured in `pom.xml` to launch the server and client classes.
+### Step 2: Start the server (Terminal 1)
+
+The server must be running **before** the client:
+
+```bash
+mvn exec:java "-Dexec.mainClass=main.java.HelloWorldServer"
+```
+
+Expected output:
+
+```
+SOAP server started.
+WSDL: http://localhost:8080/HelloWorld?wsdl
+```
+
+Keep this terminal running. The server blocks waiting for connections.
+
+### Step 3: Run the client (Terminal 2)
+
+Open a **new terminal window/tab**, then:
+
+```bash
+cd RPC_HelloWorld
+mvn exec:java "-Dexec.mainClass=main.java.HelloWorldClient"
+```
+
+Expected output:
+
+```
+Hello, World!
+```
+
+---
+
+## Troubleshooting
+
+| Problem | Cause | Solution |
+|---------|-------|----------|
+| `ClassNotFoundException: HelloWorldClient` | Class is in package `main.java` | Always use the fully qualified name: `main.java.HelloWorldClient` |
+| `Address already in use` | A previous server is still running on port 8080 | Kill the old process: `lsof -i :8080` → `kill -9 <PID>`, then restart |
+| `Connection refused` | Client ran before the server | Start the server first, wait for "SOAP server started", then run the client |
+| `-Dexec.mainClass` ignored | `mainClass` is set in `pom.xml` | Use `java -cp "target/classes:$(cat /tmp/cp.txt)" main.java.HelloWorldClient` directly |
+
+### Freeing port 8080
+
+If you get `Address already in use`:
+
+```bash
+# Find the process using port 8080
+lsof -i :8080
+
+# Kill it (replace <PID> with the actual number)
+kill -9 <PID>
+```
 
 ---
 
@@ -138,3 +275,4 @@ The `exec-maven-plugin` is configured in `pom.xml` to launch the server and clie
 - **Web Service:** JAX-WS (Jakarta XML Web Services) via `jaxws-rt 4.0.3`
 - **Protocol:** SOAP over HTTP
 - **Style:** RPC (Remote Procedure Call)
+- **Contract:** WSDL (auto-generated by JAX-WS)

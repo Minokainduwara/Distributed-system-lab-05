@@ -25,6 +25,9 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <!-- Runs the server and client. -->
                 <version>3.5.0</version>
+                <configuration>
+                    <mainClass>main.java.HelloWorldServer</mainClass>
+                </configuration>
             </plugin>
         </plugins>
     </build>
